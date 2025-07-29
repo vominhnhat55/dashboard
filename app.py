@@ -209,6 +209,15 @@ if st.session_state.sales_df is not None:
     pivot_main.loc["TỔNG"] = pivot_main.sum(numeric_only=True)
     st.dataframe(pivot_main.style.format("{:,}"), use_container_width=True)
 
+    # ✅ Tổng hợp theo sản phẩm
+    st.subheader("📌 Tổng hợp theo biến thể")
+    pivot_main = pd.pivot_table(
+        df, values=pivot_value, index="sku_name", columns="group", aggfunc="sum", fill_value=0
+    )
+    pivot_main["TỔNG"] = pivot_main.sum(axis=1)
+    pivot_main.loc["TỔNG"] = pivot_main.sum(numeric_only=True)
+    st.dataframe(pivot_main.style.format("{:,}"), use_container_width=True)
+
     # ✅ Biểu đồ Tổng hợp
     st.subheader("📈 Biểu đồ Tổng hợp")
     chart_data = df.groupby("group")[pivot_value].sum().reset_index()
