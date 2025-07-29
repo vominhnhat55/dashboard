@@ -52,6 +52,9 @@ for key in [
             [] if key != "data_loaded" else False
         )
 
+if st.button("📅 Tải dữ liệu"):
+    st.session_state.data_loaded = True
+    st.session_state.sales_df = None  # reset lại
 # ✅ Hàm tải dữ liệu
 
 
@@ -79,7 +82,7 @@ def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
 # ✅ Bộ lọc thời gian + chế độ xem
 with st.sidebar:
     st.markdown("### 🧽 Bộ lọc dữ liệu")
-    mode = st.radio("Chế độ xem", ["Doanh số", "Sản phẩm"
+    mode = st.radio("Chế độ xem", ["Doanh số", "Số lượng"
                                    ], index=0, horizontal=True)
     view = st.selectbox("Xem theo", ["Ngày", "Tuần", "Tháng"], index=0)
 
@@ -89,9 +92,7 @@ with st.sidebar:
     end_date = st.date_input("Đến ngày", today)
 
     st.markdown("---")
-    if st.button("📅 Lấy dữ liệu"):
-        st.session_state.data_loaded = True
-        st.session_state.sales_df = None  # reset lại
+
 
 # ✅ Tải dữ liệu nếu được yêu cầu
 if st.session_state.data_loaded and st.session_state.sales_df is None:
@@ -209,7 +210,7 @@ if st.session_state.sales_df is not None:
         df = df[(df["report_date"] >= pd.to_datetime(start_date)) &
                 (df["report_date"] <= pd.to_datetime(end_date))]
 
-    pivot_value = "quantity" if mode == "Sản phẩm" else "total"
+    pivot_value = "quantity" if mode == "Số lượng" else "total"
 
     # ✅ Tổng hợp theo Siêu thị
     st.subheader("📌 Tổng hợp theo Siêu thị")
