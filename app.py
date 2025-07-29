@@ -53,6 +53,8 @@ for key in [
         )
 
 # ✅ Hàm tải dữ liệu
+
+
 def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
     all_data = []
     offset = 0
@@ -73,10 +75,12 @@ def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
         offset += batch_size
     return pd.DataFrame(all_data)
 
+
 # ✅ Bộ lọc thời gian + chế độ xem
 with st.sidebar:
     st.markdown("### 🧽 Bộ lọc dữ liệu")
-    mode = st.radio("Chế độ xem", ["Sản phẩm", "Doanh số"], index=0, horizontal=True)
+    mode = st.radio("Chế độ xem", ["Sản phẩm",
+                    "Doanh số"], index=0, horizontal=True)
     view = st.selectbox("Xem theo", ["Ngày", "Tuần", "Tháng"], index=0)
 
     today = date.today()
@@ -133,20 +137,26 @@ if st.session_state.sales_df is not None:
         isocal = df["report_date"].dt.isocalendar()
         df["week"] = isocal.week
         df["year"] = isocal.year
-        df["week_start"] = df["report_date"] - pd.to_timedelta(df["report_date"].dt.weekday, unit="d")
+        df["week_start"] = df["report_date"] - \
+            pd.to_timedelta(df["report_date"].dt.weekday, unit="d")
         df["week_end"] = df["week_start"] + pd.Timedelta(days=6)
-        df["group"] = "Tuần " + df["week"].astype(str).str.zfill(2) + " (" + df["week_start"].dt.strftime("%d/%m") + "–" + df["week_end"].dt.strftime("%d/%m") + ")"
+        df["group"] = "Tuần " + df["week"].astype(str).str.zfill(
+            2) + " (" + df["week_start"].dt.strftime("%d/%m") + "–" + df["week_end"].dt.strftime("%d/%m") + ")"
     else:
         df["month"] = df["report_date"].dt.month
         df["year"] = df["report_date"].dt.year
-        df["group"] = "Tháng " + df["month"].astype(str).str.zfill(2) + "/" + df["year"].astype(str)
+        df["group"] = "Tháng " + \
+            df["month"].astype(str).str.zfill(2) + "/" + df["year"].astype(str)
 
     # ✅ Cập nhật các danh sách lọc
     st.session_state.zone_list = df["zone_name"].dropna().unique().tolist()
     st.session_state.area_list = df["area_name"].dropna().unique().tolist()
-    st.session_state.supermarket_list = df["supermarket_name"].dropna().unique().tolist()
-    st.session_state.product_list = df["product_name"].dropna().unique().tolist()
-    st.session_state.category_list = df["category_name"].dropna().unique().tolist()
+    st.session_state.supermarket_list = df["supermarket_name"].dropna(
+    ).unique().tolist()
+    st.session_state.product_list = df["product_name"].dropna(
+    ).unique().tolist()
+    st.session_state.category_list = df["category_name"].dropna(
+    ).unique().tolist()
 
     # ✅ Sidebar bộ lọc nâng cao
     with st.sidebar:
@@ -156,13 +166,18 @@ if st.session_state.sales_df is not None:
 
         filtered_supermarkets = df[df["zone_name"].isin(filter_zone)]["supermarket_name"].unique().tolist() \
             if filter_zone else st.session_state.supermarket_list
-        filter_supermarket = st.multiselect("🏪 Siêu thị", filtered_supermarkets)
+        filter_supermarket = st.multiselect(
+            "🏪 Siêu thị", filtered_supermarkets)
 
-        filter_product = st.multiselect("📦 Sản phẩm", st.session_state.product_list)
-        filter_category = st.multiselect("📂 Nhóm sản phẩm", st.session_state.category_list)
+        filter_product = st.multiselect(
+            "📦 Sản phẩm", st.session_state.product_list)
+        filter_category = st.multiselect(
+            "📂 Nhóm sản phẩm", st.session_state.category_list)
 
-        filtered_df_for_sku = df[df["product_name"].isin(filter_product)] if filter_product else df
-        filter_sku = st.multiselect("🔸 Biến thể sản phẩm", filtered_df_for_sku["sku_name"].dropna().unique().tolist())
+        filtered_df_for_sku = df[df["product_name"].isin(
+            filter_product)] if filter_product else df
+        filter_sku = st.multiselect(
+            "🔸 Biến thể sản phẩm", filtered_df_for_sku["sku_name"].dropna().unique().tolist())
 
     # ✅ Áp dụng lọc
     if filter_zone:
@@ -192,35 +207,45 @@ if st.session_state.sales_df is not None:
     # ✅ Biểu đồ Tổng hợp
     st.subheader("📈 Biểu đồ Tổng hợp")
     chart_data = df.groupby("group")[pivot_value].sum().reset_index()
-    fig = px.bar(chart_data, x="group", y=pivot_value, text_auto=True, title=f"Tổng {mode} theo {view.lower()}")
+    fig = px.bar(chart_data, x="group", y=pivot_value,
+                 text_auto=True, title=f"Tổng {mode} theo {view.lower()}")
     st.plotly_chart(fig, use_container_width=True)
 
     # ✅ Tra cứu
-    st.subheader("🔍 Tra cứu liên kết động")
+    st.subheader("🔍 Tra cứu")
     tab1, tab2 = st.tabs(["Theo Sản phẩm", "Theo Siêu thị"])
     with tab1:
-        selected_product = st.selectbox("Chọn sản phẩm", st.session_state.product_list)
+        selected_product = st.selectbox(
+            "Chọn sản phẩm", st.session_state.product_list)
         df_filtered = df[df["product_name"] == selected_product]
-        pivot = pd.pivot_table(df_filtered, values=pivot_value, index="supermarket_name", columns="group", aggfunc="sum", fill_value=0)
+        pivot = pd.pivot_table(df_filtered, values=pivot_value,
+                               index="supermarket_name", columns="group", aggfunc="sum", fill_value=0)
         pivot["TỔNG"] = pivot.sum(axis=1)
         pivot.loc["TỔNG"] = pivot.sum(numeric_only=True)
         st.dataframe(pivot.style.format("{:,}"), use_container_width=True)
 
     with tab2:
-        selected_market = st.selectbox("Chọn siêu thị", st.session_state.supermarket_list)
+        selected_market = st.selectbox(
+            "Chọn siêu thị", st.session_state.supermarket_list)
         df_filtered = df[df["supermarket_name"] == selected_market]
-        pivot = pd.pivot_table(df_filtered, values=pivot_value, index="product_name", columns="group", aggfunc="sum", fill_value=0)
+        pivot = pd.pivot_table(df_filtered, values=pivot_value,
+                               index="product_name", columns="group", aggfunc="sum", fill_value=0)
         pivot["TỔNG"] = pivot.sum(axis=1)
         pivot.loc["TỔNG"] = pivot.sum(numeric_only=True)
         st.dataframe(pivot.style.format("{:,}"), use_container_width=True)
 
     # ✅ So sánh
     st.subheader("📊 So sánh theo thời gian")
-    compare_mode = st.radio("So sánh theo", ["Sản phẩm", "Biến thể sản phẩm"], horizontal=True)
+    compare_mode = st.radio(
+        "So sánh theo", ["Sản phẩm", "Biến thể sản phẩm"], horizontal=True)
     if compare_mode == "Sản phẩm":
-        group_compare = df.groupby(["group", "product_name"])[pivot_value].sum().reset_index()
-        fig2 = px.line(group_compare, x="group", y=pivot_value, color="product_name", markers=True, title=f"So sánh {mode} theo {view.lower()} theo sản phẩm")
+        group_compare = df.groupby(["group", "product_name"])[
+            pivot_value].sum().reset_index()
+        fig2 = px.line(group_compare, x="group", y=pivot_value, color="product_name",
+                       markers=True, title=f"So sánh {mode} theo {view.lower()} theo sản phẩm")
     else:
-        group_compare = df.groupby(["group", "sku_name"])[pivot_value].sum().reset_index()
-        fig2 = px.line(group_compare, x="group", y=pivot_value, color="sku_name", markers=True, title=f"So sánh {mode} theo {view.lower()} theo biến thể sản phẩm")
+        group_compare = df.groupby(["group", "sku_name"])[
+            pivot_value].sum().reset_index()
+        fig2 = px.line(group_compare, x="group", y=pivot_value, color="sku_name",
+                       markers=True, title=f"So sánh {mode} theo {view.lower()} theo biến thể sản phẩm")
     st.plotly_chart(fig2, use_container_width=True)
