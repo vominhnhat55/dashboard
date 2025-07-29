@@ -45,7 +45,7 @@ with st.sidebar:
 # ✅ Session state khởi tạo
 for key in [
     "sales_df", "zone_list", "area_list",
-    "supermarket_list", "product_list", "category_list", "sku_list", "data_loaded"
+    "supermarket_list", "product_list", "category_list", "sku_list", "data_loaded", "system"
 ]:
     if key not in st.session_state:
         st.session_state[key] = None if key == "sales_df" else (
@@ -79,12 +79,12 @@ def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
 # ✅ Bộ lọc thời gian + chế độ xem
 with st.sidebar:
     st.markdown("### 🧽 Bộ lọc dữ liệu")
-    mode = st.radio("Chế độ xem", ["Sản phẩm",
-                    "Doanh số"], index=0, horizontal=True)
+    mode = st.radio("Chế độ xem", ["Doanh số", "Sản phẩm"
+                                   ], index=0, horizontal=True)
     view = st.selectbox("Xem theo", ["Ngày", "Tuần", "Tháng"], index=0)
 
     today = date.today()
-    default_start = today - timedelta(days=30)
+    default_start = today.replace(day=1)
     start_date = st.date_input("Từ ngày", default_start)
     end_date = st.date_input("Đến ngày", today)
 
@@ -157,13 +157,16 @@ if st.session_state.sales_df is not None:
     ).unique().tolist()
     st.session_state.category_list = df["category_name"].dropna(
     ).unique().tolist()
+    st.session_state.sku_list = df["sku_name"].dropna().unique().tolist()
+    st.session_state.system = df["system"].dropna().unique().tolist()
 
     # ✅ Sidebar bộ lọc nâng cao
     with st.sidebar:
         st.markdown("### 🎯 Bộ lọc nâng cao")
         filter_zone = st.multiselect("📍 Zone", st.session_state.zone_list)
         filter_area = st.multiselect("🏙️ Khu vực", st.session_state.area_list)
-
+        filter_system = st.multiselect(
+            "📦 Hệ thống", st.session_state.system)
         filtered_supermarkets = df[df["zone_name"].isin(filter_zone)]["supermarket_name"].unique().tolist() \
             if filter_zone else st.session_state.supermarket_list
         filter_supermarket = st.multiselect(
@@ -192,6 +195,8 @@ if st.session_state.sales_df is not None:
         df = df[df["category_name"].isin(filter_category)]
     if filter_sku:
         df = df[df["sku_name"].isin(filter_sku)]
+    if filter_system:
+        df = df[df["system"].isin(filter_system)]
 
     pivot_value = "quantity" if mode == "Sản phẩm" else "total"
 
@@ -213,7 +218,8 @@ if st.session_state.sales_df is not None:
 
     # ✅ Tra cứu
     st.subheader("🔍 Tra cứu")
-    tab1, tab2 = st.tabs(["Theo Sản phẩm", "Theo Siêu thị"])
+    tab1, tab2, tab3 = st.tabs(
+        ["Theo Sản phẩm", "Theo điểm bán", "Theo biến thể"])
     with tab1:
         selected_product = st.selectbox(
             "Chọn sản phẩm", st.session_state.product_list)
@@ -226,10 +232,20 @@ if st.session_state.sales_df is not None:
 
     with tab2:
         selected_market = st.selectbox(
-            "Chọn siêu thị", st.session_state.supermarket_list)
+            "Theo điểm bán", st.session_state.supermarket_list)
         df_filtered = df[df["supermarket_name"] == selected_market]
         pivot = pd.pivot_table(df_filtered, values=pivot_value,
                                index="product_name", columns="group", aggfunc="sum", fill_value=0)
+        pivot["TỔNG"] = pivot.sum(axis=1)
+        pivot.loc["TỔNG"] = pivot.sum(numeric_only=True)
+        st.dataframe(pivot.style.format("{:,}"), use_container_width=True)
+
+    with tab3:
+        selected_sku = st.selectbox(
+            "Chọn biến thể", st.session_state.sku_list)
+        df_filtered = df[df["sku_name"] == selected_sku]
+        pivot = pd.pivot_table(df_filtered, values=pivot_value,
+                               index="sku_name", columns="group", aggfunc="sum", fill_value=0)
         pivot["TỔNG"] = pivot.sum(axis=1)
         pivot.loc["TỔNG"] = pivot.sum(numeric_only=True)
         st.dataframe(pivot.style.format("{:,}"), use_container_width=True)
