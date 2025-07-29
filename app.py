@@ -163,6 +163,15 @@ if st.session_state.sales_df is not None:
     # ✅ Sidebar bộ lọc nâng cao
     with st.sidebar:
         st.markdown("### 🎯 Bộ lọc nâng cao")
+        min_date = df["report_date"].min().date()
+        max_date = df["report_date"].max().date()
+        selected_date_range = st.date_input(
+            "📆 Chọn khoảng ngày",
+            value=(min_date, max_date),
+            min_value=min_date,
+            max_value=max_date
+        )
+
         filter_zone = st.multiselect("📍 Zone", st.session_state.zone_list)
         filter_area = st.multiselect("🏙️ Khu vực", st.session_state.area_list)
         filter_system = st.multiselect(
@@ -171,12 +180,10 @@ if st.session_state.sales_df is not None:
             if filter_zone else st.session_state.supermarket_list
         filter_supermarket = st.multiselect(
             "🏪 Siêu thị", filtered_supermarkets)
-
-        filter_product = st.multiselect(
-            "📦 Sản phẩm", st.session_state.product_list)
         filter_category = st.multiselect(
             "📂 Nhóm sản phẩm", st.session_state.category_list)
-
+        filter_product = st.multiselect(
+            "📦 Sản phẩm", st.session_state.product_list)
         filtered_df_for_sku = df[df["product_name"].isin(
             filter_product)] if filter_product else df
         filter_sku = st.multiselect(
@@ -197,6 +204,10 @@ if st.session_state.sales_df is not None:
         df = df[df["sku_name"].isin(filter_sku)]
     if filter_system:
         df = df[df["system"].isin(filter_system)]
+    if selected_date_range:
+        start_date, end_date = selected_date_range
+        df = df[(df["report_date"] >= pd.to_datetime(start_date)) &
+                (df["report_date"] <= pd.to_datetime(end_date))]
 
     pivot_value = "quantity" if mode == "Sản phẩm" else "total"
 
