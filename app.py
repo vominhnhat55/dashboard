@@ -124,6 +124,7 @@ if st.session_state.sales_df is not None:
         pass
     else:
         st.warning("❌ Không đủ quyền truy cập dữ liệu.")
+        st.stop()
 
     # ✅ Nhóm thời gian
     if view == "Ngày":
