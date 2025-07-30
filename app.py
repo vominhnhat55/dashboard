@@ -266,7 +266,7 @@ if st.session_state.sales_df is not None:
             "Chọn biến thể", st.session_state.sku_list)
         df_filtered = df[df["sku_name"] == selected_sku]
         pivot = pd.pivot_table(df_filtered, values=pivot_value,
-                               index="sku_name", columns="group", aggfunc="sum", fill_value=0)
+                               index="supermarket_name", columns="group", aggfunc="sum", fill_value=0)
         pivot["TỔNG"] = pivot.sum(axis=1)
         pivot.loc["TỔNG"] = pivot.sum(numeric_only=True)
         st.dataframe(pivot.style.format("{:,}"), use_container_width=True)
