@@ -4,36 +4,42 @@ import plotly.express as px
 from datetime import date, timedelta
 from supabase import create_client, Client
 from postgrest.exceptions import APIError
-
-# ✅ Kết nối Supabase
+import jwt
+from urllib.parse import urlparse, parse_qs
 url = st.secrets["supabase_url"]
 key = st.secrets["supabase_key"]
 supabase: Client = create_client(url, key)
+SECRET = st.secrets["SECRET"]
+# ✅ Lấy token từ query string
+raw_token = st.query_params.get("token")
+token = raw_token[0] if isinstance(raw_token, list) else raw_token
+
+# st.write("Token:", token)
+
+# ✅ Decode nếu có token
+payload = None
+if token:
+    try:
+        payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+        # st.success(f"Chào mừng bạn: {payload}")
+    except jwt.ExpiredSignatureError:
+        st.error("❌ Token đã hết hạn")
+    except jwt.InvalidTokenError:
+        st.error("❌ Token không hợp lệ")
+else:
+    st.warning("⚠️ Không tìm thấy token")
+
+# ✅ Kết nối Supabase
+
 
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 st.title("📊 Sales Dashboard - Phân tích theo Siêu thị & Sản phẩm")
-
 # ✅ Lấy query parameters an toàn
-query_params = st.query_params
-user_role = query_params.get("role")
-user_zone = query_params.get("zone")
-user_area = query_params.get("area")
-
+user_role = payload.get("role") if payload else None
+user_zone = payload.get("zone_id") if payload else None
+user_area = payload.get("area_id") if payload else None
 # ✅ Xử lý list hoặc string
-user_role = user_role[0] if isinstance(user_role, list) else user_role
-user_zone = user_zone[0] if isinstance(user_zone, list) else user_zone
-user_area = user_area[0] if isinstance(user_area, list) else user_area
-
 # ✅ Chuyển "None" thành None thật
-try:
-    user_zone = int(user_zone)
-except (ValueError, TypeError):
-    user_zone = None
-
-try:
-    user_area = int(user_area)
-except (ValueError, TypeError):
-    user_area = None
 
 # ✅ Debug xem role và zone/area
 with st.sidebar:
@@ -102,6 +108,15 @@ if st.session_state.data_loaded and st.session_state.sales_df is None:
                 "report_date_gte": {"op": "gte", "value": str(start_date)},
                 "report_date_lte": {"op": "lte", "value": str(end_date)},
             }
+            if user_role == "TL" and user_zone:
+                filters["zone_id"] = {"op": "eq", "value": user_zone}
+            elif user_role == "AD" and user_area:
+                filters["area_id"] = {"op": "eq", "value": user_area}
+            elif user_role == "SP":
+                pass
+            else:
+                st.warning("❌ Không đủ quyền truy cập dữ liệu.")
+                st.stop()
             df = fetch_all_data("sales_summary_view", filters)
             if df.empty:
                 st.warning("⚠️ Không có dữ liệu.")
