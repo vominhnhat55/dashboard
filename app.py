@@ -76,6 +76,9 @@ def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
             elif "_lte" in key:
                 col = key.replace("_lte", "")
                 query = query.lte(col, val["value"])
+            elif val["op"] == "eq":
+                query = query.eq(key, val["value"])
+
         response = query.range(offset, offset + batch_size - 1).execute()
         data = response.data
         if not data:
@@ -117,6 +120,7 @@ if st.session_state.data_loaded and st.session_state.sales_df is None:
             else:
                 st.warning("❌ Không đủ quyền truy cập dữ liệu.")
                 st.stop()
+            st.write(filters)
             df = fetch_all_data("sales_summary_view", filters)
             if df.empty:
                 st.warning("⚠️ Không có dữ liệu.")
