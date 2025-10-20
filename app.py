@@ -40,7 +40,6 @@ user_zone = payload.get("zone_id") if payload else None
 user_area = payload.get("area_id") if payload else None
 # ✅ Xử lý list hoặc string
 # ✅ Chuyển "None" thành None thật
-
 # ✅ Debug xem role và zone/area
 with st.sidebar:
     st.markdown("### 🛡️ Thông tin quyền truy cập")
@@ -64,28 +63,119 @@ if st.button("📅 Tải dữ liệu"):
 # ✅ Hàm tải dữ liệu
 
 
+# def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
+#     all_data = []
+#     offset = 0
+#     while True:
+#         query = supabase.table(table_name).select("*")
+#         for key, val in filters.items():
+#             if "_gte" in key:
+#                 col = key.replace("_gte", "")
+#                 query = query.gte(col, val["value"])
+#             elif "_lte" in key:
+#                 col = key.replace("_lte", "")
+#                 query = query.lte(col, val["value"])
+#             elif val["op"] == "eq":
+#                 query = query.eq(key, val["value"])
+
+#         response = query.range(offset, offset + batch_size - 1).execute()
+#         data = response.data
+#         if not data:
+#             break
+#         all_data.extend(data)
+#         offset += batch_size
+#         df = pd.DataFrame(all_data)
+#         key_columns = ["report_date", "supermarket_name", "sku_name"]
+#         duplicate_count = df.duplicated(subset=key_columns).sum()
+#         if duplicate_count > 0:
+#             st.error(
+#                 f"⚠️ Tìm thấy {duplicate_count} dòng trùng lặp trong dữ liệu dựa trên {key_columns}, mặc dù bảng đã được báo cáo là không trùng lặp.")
+#             st.error(
+#                 f"⚠️ Tìm thấy {duplicate_count} dòng trùng lặp trong dữ liệu dựa trên {key_columns}, mặc dù bảng đã được báo cáo là không trùng lặp.")
+#             # Lấy các dòng trùng lặp
+#             duplicates = df[df.duplicated(subset=key_columns, keep=False)]
+#             # Lưu vào file CSV
+#             csv_data = duplicates.csv(index=False)
+#             # Hiển thị nút tải file CSV
+#             st.download_button(
+#                 label="📥 Tải file CSV chứa các dòng trùng lặp",
+#                 data=csv_data,
+#                 file_name="duplicate_records.csv",
+#                 mime="text/csv"
+#             )
+#     return df
+
 def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
     all_data = []
     offset = 0
+
     while True:
         query = supabase.table(table_name).select("*")
+
+        # Áp dụng các bộ lọc
         for key, val in filters.items():
             if "_gte" in key:
-                col = key.replace("_gte", "")
-                query = query.gte(col, val["value"])
+                query = query.gte(key.replace("_gte", ""), val["value"])
             elif "_lte" in key:
-                col = key.replace("_lte", "")
-                query = query.lte(col, val["value"])
-            elif val["op"] == "eq":
+                query = query.lte(key.replace("_lte", ""), val["value"])
+            elif val.get("op") == "eq":
                 query = query.eq(key, val["value"])
 
+        # ⚡ Bắt buộc order theo id để tránh trùng lặp khi phân trang
+        query = query.order("id", desc=False)
+
+        # Lấy dữ liệu theo batch
         response = query.range(offset, offset + batch_size - 1).execute()
         data = response.data
+
         if not data:
             break
+
         all_data.extend(data)
         offset += batch_size
-    return pd.DataFrame(all_data)
+
+    df = pd.DataFrame(all_data)
+
+    return df
+
+
+# def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
+#     all_data = []
+#     offset = 0
+
+#     while True:
+#         query = supabase.table(table_name).select("*")
+
+#         # Áp dụng các bộ lọc
+#         for key, val in filters.items():
+#             if "_gte" in key:
+#                 query = query.gte(key.replace("_gte", ""), val["value"])
+#             elif "_lte" in key:
+#                 query = query.lte(key.replace("_lte", ""), val["value"])
+#             elif val["op"] == "eq":
+#                 query = query.eq(key, val["value"])
+
+#         # ⚠️ Quan trọng: thêm order để cố định thứ tự phân trang
+#         query = query.order("id", desc=False)
+
+#         # Lấy dữ liệu theo batch
+#         response = query.range(offset, offset + batch_size - 1).execute()
+#         data = response.data
+
+#         if not data:
+#             break
+
+#         all_data.extend(data)
+#         offset += batch_size
+
+#     # Sau khi tải hết dữ liệu
+#     df = pd.DataFrame(all_data)
+
+#     # Loại bỏ trùng lặp nếu có
+#     key_columns = ["report_date", "supermarket_name", "sku_name"]
+#     df = df.drop_duplicates(subset=key_columns, keep="first")
+
+#     return df
 
 
 # ✅ Bộ lọc thời gian + chế độ xem
@@ -94,7 +184,6 @@ with st.sidebar:
     mode = st.radio("Chế độ xem", ["Doanh số", "Số lượng"
                                    ], index=0, horizontal=True)
     view = st.selectbox("Xem theo", ["Ngày", "Tuần", "Tháng"], index=0)
-
     today = date.today()
     default_start = today.replace(day=1)
     start_date = st.date_input("Từ ngày", default_start)
