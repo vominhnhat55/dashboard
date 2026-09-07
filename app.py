@@ -6,6 +6,7 @@ from supabase import create_client, Client
 from postgrest.exceptions import APIError
 import jwt
 from urllib.parse import urlparse, parse_qs
+from pathlib import Path
 url = st.secrets["supabase_url"]
 key = st.secrets["supabase_key"]
 supabase: Client = create_client(url, key)
@@ -34,6 +35,25 @@ else:
 
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 st.title("📊 Sales Dashboard - Phân tích theo Siêu thị & Sản phẩm")
+
+# ================= 🧭 CHUYỂN TRANG (thêm mới — không ảnh hưởng phần phân tích phía dưới) =================
+try:
+    _v2_page = str(Path(__file__).resolve().parent / "pages" / "2_📈_Dashboard_V2.py")
+except Exception:  # noqa: BLE001
+    _v2_page = "pages/2_📈_Dashboard_V2.py"
+
+with st.container(border=True):
+    _nav_a, _nav_b = st.columns([6, 2], vertical_alignment="center")
+    _nav_a.markdown(
+        "🖥️ **Đang xem:** Dashboard cũ (app.py) · Bấm nút bên phải để chuyển sang "
+        "**📈 Dashboard Nâng cao V2** (trang mới — cùng nguồn dữ liệu, để so sánh số liệu).")
+    if _nav_b.button("📈 Chuyển sang Dashboard V2", type="primary", use_container_width=True):
+        try:
+            st.switch_page(_v2_page)
+        except Exception:  # noqa: BLE001
+            st.warning("⚠️ Chưa chuyển trang được: server đang chạy bản cũ chưa nhận thư mục `pages/`. "
+                       "Hãy tắt server cũ rồi chạy lại: `streamlit run app.py`.")
+
 # ✅ Lấy query parameters an toàn
 user_role = payload.get("role") if payload else None
 user_zone = payload.get("zone_id") if payload else None
