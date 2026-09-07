@@ -64,6 +64,22 @@ st.title("📈 Sales Insights — Dashboard Nâng cao (V2)")
 st.caption("Trang **mới**, không sửa app.py cũ. Cùng nguồn RPC `get_sales_summary` nên tổng doanh thu "
            "khớp chính xác với Dashboard cũ khi cùng khoảng thời gian & quyền.")
 
+# ================= 🧭 CHUYỂN TRANG (quay về trang cũ) =================
+try:
+    _v1_page = str(_ROOT / "app.py")
+except Exception:  # noqa: BLE001
+    _v1_page = "app.py"
+
+with st.container(border=True):
+    _nav_a, _nav_b = st.columns([6, 2], vertical_alignment="center")
+    _nav_a.markdown("🖥️ **Đang xem:** Dashboard Nâng cao V2 (trang mới) · "
+                    "Bấm nút bên phải để quay về **📊 Dashboard cũ** khi cần so sánh.")
+    if _nav_b.button("📊 Quay về Dashboard cũ", use_container_width=True):
+        try:
+            st.switch_page(_v1_page)
+        except Exception:  # noqa: BLE001
+            st.warning("⚠️ Chưa quay về được — hãy dùng menu trang ở sidebar hoặc nút Back của trình duyệt.")
+
 with st.expander("ℹ️ Cách đọc & so sánh với Dashboard cũ"):
     st.markdown("""
 - **Đơn vị**: mọi số tiền là **VND (₫)**. `Doanh thu = Σ total`, `Số lượng = Σ quantity`
