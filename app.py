@@ -105,27 +105,25 @@ if st.button("📅 Tải dữ liệu"):
 #             )
 #     return df
 
-def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
+def fetch_sales_summary(start_date, end_date, zone_id=None, area_id=None, batch_size=1000):
+    # ⚡ Gọi RPC get_sales_summary thay vì select trực tiếp từ sales_summary_view.
+    # View cũ dùng row_number() over () trên kết quả GROUP BY của cả lịch sử bán hàng,
+    # nên Postgres phải join + gộp TOÀN BỘ sale_items trước khi lọc theo report_date,
+    # đây chính là nguyên nhân gây "canceling statement due to statement timeout".
+    # Hàm RPC lọc report_date/zone_id/area_id ngay trong JOIN nên chỉ gộp đúng phần
+    # dữ liệu cần thiết. Cần chạy migration tạo hàm này trong Supabase trước khi dùng.
     all_data = []
     offset = 0
+    params = {
+        "p_start": str(start_date),
+        "p_end": str(end_date),
+        "p_zone_id": zone_id,
+        "p_area_id": area_id,
+    }
 
     while True:
-        query = supabase.table(table_name).select("*")
-
-        # Áp dụng các bộ lọc
-        for key, val in filters.items():
-            if "_gte" in key:
-                query = query.gte(key.replace("_gte", ""), val["value"])
-            elif "_lte" in key:
-                query = query.lte(key.replace("_lte", ""), val["value"])
-            elif val.get("op") == "eq":
-                query = query.eq(key, val["value"])
-
-        # ⚡ Bắt buộc order theo id để tránh trùng lặp khi phân trang
-        query = query.order("id", desc=False)
-
-        # Lấy dữ liệu theo batch
-        response = query.range(offset, offset + batch_size - 1).execute()
+        response = supabase.rpc("get_sales_summary", params).range(
+            offset, offset + batch_size - 1).execute()
         data = response.data
 
         if not data:
@@ -133,6 +131,9 @@ def fetch_all_data(table_name: str, filters: dict, batch_size=1000):
 
         all_data.extend(data)
         offset += batch_size
+
+        if len(data) < batch_size:
+            break
 
     df = pd.DataFrame(all_data)
 
@@ -196,21 +197,18 @@ with st.sidebar:
 if st.session_state.data_loaded and st.session_state.sales_df is None:
     with st.spinner("Đang tải dữ liệu..."):
         try:
-            filters = {
-                "report_date_gte": {"op": "gte", "value": str(start_date)},
-                "report_date_lte": {"op": "lte", "value": str(end_date)},
-            }
+            zone_id = None
+            area_id = None
             if user_role == "TL" and user_zone:
-                filters["zone_id"] = {"op": "eq", "value": user_zone}
+                zone_id = user_zone
             elif user_role == "AD" and user_area:
-                filters["area_id"] = {"op": "eq", "value": user_area}
+                area_id = user_area
             elif user_role == "SP":
                 pass
             else:
                 st.warning("❌ Không đủ quyền truy cập dữ liệu.")
                 st.stop()
-            st.write(filters)
-            df = fetch_all_data("sales_summary_view", filters)
+            df = fetch_sales_summary(start_date, end_date, zone_id=zone_id, area_id=area_id)
             if df.empty:
                 st.warning("⚠️ Không có dữ liệu.")
                 st.session_state.sales_df = None
